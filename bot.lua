@@ -1,12 +1,12 @@
 local discordia = require("discordia")
 local fs = require("fs")
-local pp = require("pretty-print")
-local https = require("https")
+local http = require("coro-http")
+local json = require("json")
 local client = discordia.Client()
 
 -- 
 local adminId = 244846359763615744
-
+local HTTP_PATH = "https://luaobfuscator.com/api/obfuscator/"
 
 
 client:on("ready", function()
@@ -34,12 +34,18 @@ client:on("messageCreate", function(message)
 		message.content:sub(1, #cmd2) == cmd2) then
 
 		--message.channel:send(message.content)
-		pp.print("Obfuscation request by: " .. message.author.username)	
+		print("Obfuscation request by: " .. message.author.username)	
 		
 		-- check for files/content one way or another
 		local msg = ""
 		if message.attachments ~= nil and #message.attachments > 0 then
-			msg = message.attachments[1].url -- TODO: HTTP GET
+			local url = message.attachments[1].url -- TODO: HTTP GET
+			local res, body = http.request("POST", url, "")
+			if res.code ~= 200 then
+				message.channel:send("Error obtaining file from Discord (" .. res.code .. ")")
+				return
+			end
+			msg = body
 		--elseif message.embeds ~= nil and #message.embeds > 0 then
 		--	pp.print(dump(message.embeds))	
 		end
@@ -48,67 +54,46 @@ client:on("messageCreate", function(message)
 			return
 		end
 
-		pp.print("message: " .. message.content)
-		--pp.print("embed count: " .. #message.embeds)
-		pp.print("file count: " .. #message.attachments)
+		--print("message: " .. message.content)
+		--print("embed count: " .. #message.embeds)
+		--print("file count: " .. #message.attachments)
 
 		-- content check
-		pp.print(dump(message.attachments[1]))
+		--print(dump(message.attachments[1]))
 
 		-- obfsucate it
-		pp.print("Obfuscating...")
-		local options = {
-			host = "luaobfuscator.com",
-			port = 443,
-			path = "/api/obfuscator/newscript/"
-		}
+		print("Obfuscating...")
+		
+		-- upload to create a new session
+		local res, body = http.request("POST", 
+			HTTP_PATH .. "newscript", 
+			{
+				{ "Content-Type", "application/json" },
+				{ "apikey", "test" }
+			},
+			msg)
+		
+		-- TODO: call a pre-defined 1-click button obfuscation?	
 
-		local req = https.request(options, function (res)
-			res:on("data", function (chunk)
-				pp.print(chunk)
-			end)
-		end)
-		req:done()
-		message.channel:send(message.attachments[1].url)
-			
-		--[[
-		message:reply {
-			embed = {
-				title = "Obfuscation Request",
-				description = "Please provide a Lua 5.1 file (or partial limited 5.4.3) and click obfuscate button",
-				author= {
-					name = message.author.username,
-					icon_url = message.author.avatarURL,
-				},
-				fields = {
-					{
-						name = "Test",
-						value = "Obfuscate",
-						inline = false,
-					}
-				},
-				footer = { text = "luaObfuscator.com" },
-				color = 0x000000
-			}
-		}]]--
-		--[[
-		message.channel:send {
-			content = "Select your choise",
-			components = {
-				{
-					type = 1,
-					components = {
-						{
-							tpye = 2,
-							style = 1,
-							label = "> OBFUSCATE <",
-							custom_id = "pre-3",
-							disbaled = false,
-						}
-					}
-				}
-			}
-		}]]--
+		print(dump(options))
+		local data = json.parse(body)
+		local result = "https://luaobfuscator.com/?session=" .. data.sessionId
+		print(dump(res))
+		
+		-- handle HTTP errors
+		if res.code ~= 200 then
+			message.channel:send("Unknown server error (" .. tostring(res.status) .. ")")
+			return
+		end
+
+		-- handle server errors
+		if body.message ~= nil then
+			message.channel:send("Server error:\n" .. body.message)
+			return
+		end
+
+		-- OK?
+		message.channel:send(result)
 	end
 end)
 
@@ -116,5 +101,6 @@ end)
 -- get key
 local key = fs.readFileSync("key.dat")
 key = key:sub(1, #key-1) -- stupid line ending I can't seem to get rid of??
+
 client:run(key)
 
