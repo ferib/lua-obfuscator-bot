@@ -7,7 +7,7 @@ local client = discordia.Client()
 -- 
 local adminId = 244846359763615744
 local HTTP_PATH = "https://luaobfuscator.com/api/obfuscator/"
-
+local LuaObfuscatorGuildId = 1069422455933902949
 -- helpers
 
 local function parsePre(s)
@@ -41,11 +41,12 @@ client:on("ready", function()
 	print("Logged in as ".. client.user.username)
 end)
 
-client:on("messageCreate", function(message) pcall(messageCreateHandler, message) end)
+client:on("messageCreate", function(message) local s, e = pcall(messageCreateHandler, message) if not s then print(e) end end)
 
 function messageCreateHandler(message)
-	local cmd = "!obfuscate"
-	local cmd2 = "!obf"
+	local cmd_obf = "!obfuscate"
+	local cmd_obf2 = "!obf"
+	local cmd_deobf = "!deobf"
 	local cmd_help = "!help"
 
 	-- helper
@@ -61,12 +62,39 @@ function messageCreateHandler(message)
 
 	-- check for command
 	if message.author.bot == false then
+		-- check for help
 		if message.content:sub(1, #cmd_help) == cmd_help then
 			message.channel:send("To obfuscate a Lua file, type `!obf` and attach a file to the message, or embed a code snipet using tripple backticks (3x `` `). Cheer!")
 			return
 		end
-		if (message.content:sub(1, #cmd) == cmd or
-		    message.content:sub(1, #cmd2) == cmd2) then
+		-- check for deobf request
+		if (message.content:sub(1, #cmd_deobf) == cmd_deobf) then
+			-- check server match
+			print(message.guild.id .. " == 1069422455933902949")
+			--print(dump(message.guild))
+			if message.guild ~= nil and message.guild.id == 1069422455933902949 then
+				-- OK?
+			else
+				--message.channel:send("You do not have permission for this command, please consider boosting/supporting the server")
+
+				-- TODO: we can look the user up in our guild by ID and check if it owns the role
+				message.channel:send("This message can only be used in the public discord channel")
+				return
+			end
+			local premiumName = "Server Booster"
+			local role = message.guild.roles:find(function(r)
+				return r.name == premiumName
+			end)
+			if role and message.member.roles:has(role) then
+				message.channel:send("TODO: add deobfuscator API xd")
+				return	
+			end
+			message.channel:send("You do not have permission for this command, please consider boosting/supporting the server")
+			return
+		end
+		-- check for obf request
+		if (message.content:sub(1, #cmd_obf) == cmd_obf or
+		    message.content:sub(1, #cmd_obf2) == cmd_obf2) then
 
 		--print(dump(message.content))
 		print("Obfuscation request by: " .. message.author.username)	
