@@ -90,7 +90,7 @@ function messageCreateHandler(message)
 			end
 		end
 
-		if msg == nil then
+		if msg == nil or msg == "" then
 			message.channel:send("Please provide a valid Lua 5.1 script _(partial support for Lua 5.4.3 is available)_")
 			return
 		end
