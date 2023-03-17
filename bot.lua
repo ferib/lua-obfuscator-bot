@@ -41,9 +41,12 @@ client:on("ready", function()
 	print("Logged in as ".. client.user.username)
 end)
 
-client:on("messageCreate", function(message)
+client:on("messageCreate", function(message) pcall(messageCreateHandler, message) end)
+
+function messageCreateHandler(message)
 	local cmd = "!obfuscate"
 	local cmd2 = "!obf"
+	local cmd_help = "!help"
 
 	-- helper
 	function dump(o)
@@ -57,9 +60,13 @@ client:on("messageCreate", function(message)
 	end
 
 	-- check for command
-	if message.author.bot == false and 
-		(message.content:sub(1, #cmd) == cmd or
-		message.content:sub(1, #cmd2) == cmd2) then
+	if message.author.bot == false then
+		if message.content:sub(1, #cmd_help) == cmd_help then
+			message.channel:send("To obfuscate a Lua file, type `!obf` and attach a file to the message, or embed a code snipet using tripple backticks (3x `` `). Cheer!")
+			return
+		end
+		if (message.content:sub(1, #cmd) == cmd or
+		    message.content:sub(1, #cmd2) == cmd2) then
 
 		--print(dump(message.content))
 		print("Obfuscation request by: " .. message.author.username)	
@@ -75,9 +82,11 @@ client:on("messageCreate", function(message)
 			end
 			msg = body
 		else --if message.embeds ~= nil and #message.embeds > 0 then
-			local parsedMsg = parsePre(message.content)
-			if parsedMsg ~= nil then
-				msg = parsedMsg
+			if message.content:find("```") then
+				local parsedMsg = parsePre(message.content)
+				if parsedMsg ~= nil then
+					msg = parsedMsg
+				end
 			end
 		end
 
@@ -85,14 +94,7 @@ client:on("messageCreate", function(message)
 			message.channel:send("Please provide a valid Lua 5.1 script _(partial support for Lua 5.4.3 is available)_")
 			return
 		end
-
-		--print("message: " .. message.content)
-		--print("embed count: " .. #message.embeds)
-		--print("file count: " .. #message.attachments)
-
-		-- content check
-		--print(dump(message.attachments[1]))
-
+		
 		-- obfsucate it
 		print("Obfuscating...")
 		
@@ -134,7 +136,8 @@ client:on("messageCreate", function(message)
 			file = { "luaObfuscated.lua", result }
 		}
 	end
-end)
+	end
+end
 
 
 -- get key
